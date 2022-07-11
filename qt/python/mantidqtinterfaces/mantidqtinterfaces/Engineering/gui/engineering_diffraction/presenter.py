@@ -14,6 +14,9 @@ from .tabs.focus.view import FocusView
 from .tabs.focus.presenter import FocusPresenter
 from .tabs.fitting.view import FittingView
 from .tabs.fitting.presenter import FittingPresenter
+from .tabs.gsas2.model import GSAS2Model
+from .tabs.gsas2.presenter import GSAS2Presenter
+from .tabs.gsas2.view import GSAS2View
 from .settings.settings_model import SettingsModel
 from .settings.settings_view import SettingsView
 from .settings.settings_presenter import SettingsPresenter
@@ -66,6 +69,12 @@ class EngineeringDiffractionPresenter(object):
         self.fitting_presenter = FittingPresenter(fitting_view)
         self.focus_presenter.add_focus_subscriber(self.fitting_presenter.data_widget.presenter.focus_run_observer)
         view.tabs.addTab(fitting_view, "Fitting")
+
+    def setup_gsas2(self, view):
+        gsas2_model = GSAS2Model()
+        gsas2_view = GSAS2View(parent=view.tabs)
+        self.gsas2_presenter = GSAS2Presenter(gsas2_model, gsas2_view)
+        view.tabs.addTab(gsas2_view, "GSAS II")
 
     def setup_settings(self, view):
         settings_model = SettingsModel()
