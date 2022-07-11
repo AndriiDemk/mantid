@@ -18,4 +18,5 @@ class GSAS2Presenter(object):
         self.view.set_refine_clicked(self.on_refine_clicked)
 
     def on_refine_clicked(self):
-        self.model.run_model()
+        refine_params = self.view.get_refinement_parameters()
+        self.model.run_model(refine_params)

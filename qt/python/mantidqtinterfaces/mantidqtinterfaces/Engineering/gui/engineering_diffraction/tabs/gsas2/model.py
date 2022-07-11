@@ -110,11 +110,20 @@ class GSAS2Model(object):
                 space_group = "".join(split_string)
         return space_group
 
-    def choose_cell_lengths(self, overriding_cell_lengths, phase_file_path):
+    def choose_cell_lengths(self, overriding_cell_lengths: str, phase_file_path):
         if overriding_cell_lengths:
-            cell_lengths = " ".join([str(overriding_cell_lengths[0]),
-                                     str(overriding_cell_lengths[1]),
-                                     str(overriding_cell_lengths[2])])
+            if "," not in overriding_cell_lengths:
+                overriding_cell_lengths_list = [float(overriding_cell_lengths)] * 3
+            else:
+                overriding_cell_lengths_list = [float(x) for x in overriding_cell_lengths.split(",")]
+
+            if len(overriding_cell_lengths_list) != 3:
+                raise ValueError(f"The number of Override Cell Length values ({len(overriding_cell_lengths_list)}) "
+                                 + f"must be 1 or 3 (and separated by commas).")
+
+            cell_lengths = " ".join([str(overriding_cell_lengths_list[0]),
+                                     str(overriding_cell_lengths_list[1]),
+                                     str(overriding_cell_lengths_list[2])])
         else:
             cell_length_a = self.find_in_file(phase_file_path, '_cell_length_a', ' ', '_cell_length_b')
             cell_length_b = self.find_in_file(phase_file_path, '_cell_length_b', ' ', '_cell_length_c')
@@ -200,7 +209,9 @@ class GSAS2Model(object):
         axes.legend(fontsize=8.0).set_draggable(True)
         plt.show()
 
-    def run_model(self):
+    def run_model(self, refinement_parameters):
+
+        success_state = 0
 
         '''Inputs Tutorial'''
         # path_to_gsas2 = "/home/danielmurphy/gsas2/"
@@ -251,7 +262,7 @@ class GSAS2Model(object):
         path_to_gsas2 = "/home/danielmurphy/gsas2/"
         save_directory = "/home/danielmurphy/Downloads/GSASdata/new_outputs/"
         data_directory = "/home/danielmurphy/Desktop/GSASMantiddata_030322/"
-        refinement_method = "Pawley"
+        refinement_method = refinement_parameters[0] # "Pawley"
         data_files = ["Save_gss_305761_307521_bank_1_bgsub.gsa"]  # ["ENGINX_305761_307521_all_banks_TOF.gss"]
         histogram_indexing = [1]  # assume only indexing when using 1 histogram file
         instrument_files = ["ENGINX_305738_bank_1.prm"]
@@ -261,11 +272,10 @@ class GSAS2Model(object):
         x_min = [18401.18]
         x_max = [50000.0]
 
-        override_cell_lengths = [3.65, 3.65, 3.65]  # in presenter force to empty or len3 list of floats
         refine_background = True
-        refine_microstrain = True
-        refine_sigma_one = False
-        refine_gamma = False
+        refine_microstrain = refinement_parameters[2] # True
+        refine_sigma_one = refinement_parameters[3] # False
+        refine_gamma = refinement_parameters[4] # False
         d_spacing_min = 1.0
         refine_unit_cell = True
 
@@ -279,12 +289,14 @@ class GSAS2Model(object):
         make_temporary_save_directory = ("mkdir -p " + temporary_save_directory)
         out_make_temporary_save_directory, err_make_temporary_save_directory = self.call_subprocess(
             make_temporary_save_directory)
-
+        phase_filepath = os.path.join(data_directory, phase_files[0])
+        chosen_cell_lengths = self.choose_cell_lengths(refinement_parameters[1],
+                                                       phase_filepath)  # [3.65, 3.65, 3.65]  #  I
+        # should force to empty, len1 or len3 list of floats
+        mantid_pawley_reflections = None
         if refinement_method == 'Pawley':
-            phase_filepath = os.path.join(data_directory, phase_files[0])
             mantid_pawley_reflections = self.create_pawley_reflections(
-                cell_lengths=self.choose_cell_lengths(override_cell_lengths,
-                                                      phase_filepath),
+                cell_lengths=chosen_cell_lengths,
                 space_group=self.read_space_group(phase_filepath),
                 basis=self.read_basis(phase_filepath),
                 dmin=d_spacing_min)
@@ -327,7 +339,7 @@ class GSAS2Model(object):
             instrument_files=instrument_files,
             limits=[x_min, x_max],
             mantid_pawley_reflections=mantid_pawley_reflections,
-            override_cell_lengths=override_cell_lengths,
+            override_cell_lengths=[float(x) for x in chosen_cell_lengths.split(" ")],
             refine_unit_cell=refine_unit_cell,
             d_spacing_min=d_spacing_min
         )
@@ -373,8 +385,10 @@ class GSAS2Model(object):
         for output_file in os.listdir(temporary_save_directory):
             os.rename(os.path.join(temporary_save_directory, output_file),
                       os.path.join(user_save_directory, output_file))
+            success_state = 1
         os.rmdir(temporary_save_directory)
         logger.notice(f"\n\nOutput GSAS-II files saved in {user_save_directory}")
+        return success_state
 
         # # open GSAS-II project
         # open_project_call = (path_to_gsas2 + "bin/python " + path_to_gsas2 + "GSASII/GSASII.py "
