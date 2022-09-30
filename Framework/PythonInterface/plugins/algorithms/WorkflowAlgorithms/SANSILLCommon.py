@@ -283,7 +283,7 @@ def blank_monitor_ws_neg_index(instrument):
 
 def real_monitor_ws_neg_index(instrument):
     '''Returns the negative index of the spectra corresponding to the non-empty monitor'''
-    if instrument != 'D16':
+    if instrument != 'D16' and instrument != 'SANS-1_MLZ':
         return -2
     else:
         return -1
@@ -337,6 +337,9 @@ def get_vertical_grouping_pattern(ws):
         CropToComponent(InputWorkspace=ws, OutputWorkspace=ws, ComponentNames='back_detector')
         max_id = 32768
         step = 128
+    elif 'SANS-1' in inst_name:
+        step = 128
+        max_id = 16384
     else:
         logger.warning('Instruments other than D11, D22, and D33 are not yet supported for direct beam width fitting.')
         return
