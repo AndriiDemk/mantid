@@ -834,6 +834,10 @@ class SANSILLReduction(PythonAlgorithm):
         if not self.getPropertyValue('Runs'):
             #
             self.progress = Progress(self, start=0.0, end=1.0, nreports=10)
+            self.process = self.getPropertyValue('ProcessAs')
+            ws = self.getPropertyValue('SampleWorkspace')
+            self.instrument = mtd[ws].getInstrument().getName()
+            self.set_process_as(ws)
             return
 
         ws = self.getPropertyValue('OutputWorkspace')
